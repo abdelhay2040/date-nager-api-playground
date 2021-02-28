@@ -14,8 +14,8 @@ Used [RestCountries.eu](https://restcountries.eu/) API to lookup timezone inform
 ### Exploration
 Exploration of the Nager.Date was completed by developed the following /get endpoints:
 * `/GetCountryWithMaxHolidays` gets the country that had the most holidays, for a given year.
-* `/GetMonthWithMaxHolidays` get the month that had most holidays globally, for a given year.
-* `/GetCountryWithMaxUniqueHolidays` retrieve the country that had the most unique holidays (days that no other country had a holiday), for a given year.
+* `/GetMonthWithMaxHolidays` gets the month that had most holidays globally, for a given year.
+* `/GetCountryWithMaxUniqueHolidays` retrieves the country that had the most unique holidays (days that no other country had a holiday), for a given year.
 * `GetLongestLastingHolidaysSequence` retrieves the longest lasting sequence of holidays globally using [Sweep Line Algorithm](https://en.wikipedia.org/wiki/Sweep_line_algorithm).
 
 ### Features
