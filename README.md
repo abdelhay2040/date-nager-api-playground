@@ -9,7 +9,11 @@ Used Swagger to document the exploration endpoints.
 Used [RestCountries.eu](https://restcountries.eu/) API to lookup timezone information per country.
 
 ### How to Run?
-<todo>how to run</todo>
+Through Visual Studio:
+1. Open project (target ASP.net core 3 framework)
+2. Right click on the project > nugget restore
+3. Set HolidayOptimizer Project as Main Project
+4. Run project
 
 ### Exploration
 Exploration of the Nager.Date was completed by developed the following /get endpoints:
