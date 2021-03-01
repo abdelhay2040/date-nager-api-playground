@@ -18,9 +18,17 @@ Through Visual Studio:
 ### Exploration
 Exploration of the Nager.Date was completed by developed the following /get endpoints:
 * `/GetCountryWithMaxHolidays` gets the country that had the most holidays, for a given year.
+   
+   Works by maintaing a `CountryWithMaximumHolidays` Object populated with the maximum holidays throughout the holidays retrieval from date-nager-api.  
 * `/GetMonthWithMaxHolidays` gets the month that had most holidays globally, for a given year.
+  
+  Works by maintaing an array of months [12] that gets updated throughout the holidays retrieval from date-nager-api.
 * `/GetCountryWithMaxUniqueHolidays` retrieves the country that had the most unique holidays (days that no other country had a holiday), for a given year.
+  
+  Works by maintaing two maps. The first map has the 365 key (year days) and values of countries list that have holidays on that day. Then a second map is generated from the first map, where the key is the Country and the values are its unique holidays.   
 * `GetLongestLastingHolidaysSequence` retrieves the longest lasting sequence of holidays globally using [Sweep Line Algorithm](https://en.wikipedia.org/wiki/Sweep_line_algorithm).
+
+   Works by merging the time intervals of holidays (after changing each holiday to its equivalent UTC mapping) to find the longest time interval.
 
 ### Features
 * Caching of results.
