@@ -25,9 +25,9 @@ namespace swaggertest.Controllers
         private readonly string[] _countryCodes;
         private IMemoryCache _memoryCache;
 
-        private Dictionary<string, int> _countriesWithUniqueVacations = new Dictionary<string, int>();
+        private Dictionary<string, int> _countriesWithUniqueHolidays = new Dictionary<string, int>();
         private CountryModel _countriyWithMaxHolidays = new CountryModel();
-        private Dictionary<int, HashSet<string>> _daysCountryCodesMap = new Dictionary<int, HashSet<string>>();
+        private Dictionary<int, HashSet<string>> _dayOfTheYearsMap = new Dictionary<int, HashSet<string>>();
         private int[] _holidayiesPerMonth = new int[12];
         #endregion
 
@@ -43,26 +43,34 @@ namespace swaggertest.Controllers
         }
         #endregion Contructor
         #region Private Functions 
-
+        /*
+         * request all of the holidays of the countries for the passed year if the data for that year
+         * is not cached , if it is cached it will get the cached data
+        */
         private void RequestAllCountriesHolidays(int year)
         {
-            if (year < 1900 || year > 2050)
+            if (year <= 1900 || year >= 2050)
             {
-                throw new UserFriendlyException("Please check the year you have entered");
+                throw new UserFriendlyException("Please check the year you have entered should be between 1900 and 2050");
             }
 
-            if (GetCashedProccedHolidays(year)) return;
+            if (GetCachedProccedHolidays(year)) return;
 
             foreach (var countryCode in _countryCodes)
             {
                 var publicHolidays = DateSystem.GetPublicHoliday(year, countryCode);
                 ProcessCountryHolidays(countryCode, publicHolidays);
             }
+
             InizializeCountriesWithUniqueVacations();
             CacheProccedHolidays(year);
 
         }
 
+        /* ProcessCountryHolidays has multiple purposes:
+         * 1. Calls the country with max holidays tracker (TrackCountriyWithMaxHolidays)
+         * 2. Calls MapHolidaysIntoDayOfTheYear
+        */
         private void ProcessCountryHolidays(string countryCode, IEnumerable<PublicHoliday> publicHolidays)
         {
 
@@ -71,22 +79,30 @@ namespace swaggertest.Controllers
             foreach (var publicHoliday in publicHolidays)
             {
                 TrackMonthWithMaxHolidays(publicHoliday.Date.Month);
-                FlatteningHolidays(countryCode, publicHoliday.Date); 
+                MapHolidaysIntoDayOfTheYear(countryCode, publicHoliday.Date);
             }
         }
 
+        /* 
+         * InizializeCountriesWithUniqueVacations purpose is to maintain _countriesWithUniqueVacations updated 
+         * with countries of unique holidays (the day is a holiday only in this country i.e. day.Value.Count == 1)
+        */
         private void InizializeCountriesWithUniqueVacations()
         {
-            foreach (var day in _daysCountryCodesMap)
+            foreach (var day in _dayOfTheYearsMap)
             {
                 if (day.Value.Count == 1) // if the day have only one country
                 {
                     string country = day.Value.ElementAt(0);
-                    _countriesWithUniqueVacations[country] = _countriesWithUniqueVacations.GetValueOrDefault(country) + 1; // add it to the map that contains countries and how many unique days it have
+                    _countriesWithUniqueHolidays[country] = _countriesWithUniqueHolidays.GetValueOrDefault(country) + 1; // add it to the map that contains countries and how many unique days it have
                 }
             }
         }
 
+        /* 
+         * TrackCountriyWithMaxHolidays purpose is to keep _countriyWithMaxHolidays updated 
+         * with they country of maximum number of holidays
+        */
         private void TrackCountriyWithMaxHolidays(string countryCode, int holidays)
         {
 
@@ -102,56 +118,71 @@ namespace swaggertest.Controllers
             _holidayiesPerMonth[month - 1]++;
         }
 
-        private void FlatteningHolidays(string countryCode, DateTime dateTime)//for each day of the year put a list of countries code that have holiday at this day
+        /* 
+         * TrackCountriyWithMaxHolidays puts a list of country codes that have holiday at this day
+         * for each day of the year
+        */
+        private void MapHolidaysIntoDayOfTheYear(string countryCode, DateTime dateTime)
         {
             int dayOfTheYear = dateTime.DayOfYear;
-            if (!_daysCountryCodesMap.ContainsKey(dayOfTheYear))
+            if (!_dayOfTheYearsMap.ContainsKey(dayOfTheYear))
             {
-                _daysCountryCodesMap.Add(dayOfTheYear, new HashSet<string>() { countryCode });
+                _dayOfTheYearsMap.Add(dayOfTheYear, new HashSet<string>() { countryCode });
             }
             else
             {
-                _daysCountryCodesMap[dayOfTheYear].Add(countryCode);
+                _dayOfTheYearsMap[dayOfTheYear].Add(countryCode);
             }
         }
-
+        /* 
+        * select the country which has the most uniquue holiday from the _countriesWithUniqueVacations
+        */
         private CountryModel CountryWithMaxUniqueHolidays()
         {
-            var countryWithMaxUniqueHolidays = _countriesWithUniqueVacations.Aggregate((l, r) => l.Value > r.Value ? l : r);
+            var countryWithMaxUniqueHolidays = _countriesWithUniqueHolidays.Aggregate((l, r) => l.Value > r.Value ? l : r);
             CountryModel countryHoliday = new CountryModel(countryWithMaxUniqueHolidays.Key, countryWithMaxUniqueHolidays.Value);
             return countryHoliday;
         }
-
+        /* 
+        * cache variables per year , add the year as prefix or postfix for the variables  
+        */
         private void CacheProccedHolidays(int year)
         {
-
-            _memoryCache.Set(year + "cashed", true);
+            _memoryCache.Set(year + "cached", true);
             _memoryCache.Set("countriyWithMaxHolidays" + year, _countriyWithMaxHolidays);
-            _memoryCache.Set("countriesWithUniqueVacations" + year, _countriesWithUniqueVacations);
-            _memoryCache.Set("daysAndCountryCodesMap" + year, _daysCountryCodesMap);
+            _memoryCache.Set("countriesWithUniqueVacations" + year, _countriesWithUniqueHolidays);
+            _memoryCache.Set("daysAndCountryCodesMap" + year, _dayOfTheYearsMap);
             _memoryCache.Set("holidayiesPerMonth" + year, _holidayiesPerMonth);
         }
-        private bool GetCashedProccedHolidays(int year)// will return true if is is cashed false otherwise 
+        /* 
+       *  will return true if is is cached false otherwise
+       *  if it the year is cached assign the global variable to the cached variables 
+       */
+        private bool GetCachedProccedHolidays(int year)
         {
             bool yearCached;
-            bool isYearCached = _memoryCache.TryGetValue(year + "cashed", out yearCached);
+            bool isYearCached = _memoryCache.TryGetValue(year + "cached", out yearCached);
             if (isYearCached)
             {
                 _memoryCache.TryGetValue("countriyWithMaxHolidays" + year, out _countriyWithMaxHolidays);
-                _memoryCache.TryGetValue("countriesWithUniqueVacations" + year, out _countriesWithUniqueVacations);
-                _memoryCache.TryGetValue("daysAndCountryCodesMap" + year, out _daysCountryCodesMap);
+                _memoryCache.TryGetValue("countriesWithUniqueVacations" + year, out _countriesWithUniqueHolidays);
+                _memoryCache.TryGetValue("daysAndCountryCodesMap" + year, out _dayOfTheYearsMap);
                 _memoryCache.TryGetValue("holidayiesPerMonth" + year, out _holidayiesPerMonth);
-               
+
             }
             return isYearCached;
         }
-
+        /*
+        * request countries time zones and maintian a dictionry of country and it's time zones 
+        */
         private async Task<Dictionary<string, IList<string>>> RequestContryZonesAsync()
         {
             Dictionary<string, IList<string>> timeZones;
-            bool timeZoneExist = _memoryCache.TryGetValue("timeZones", out timeZones);//check if it is already cashed 
+
+            //check if it is already cached 
+            bool timeZoneExist = _memoryCache.TryGetValue("timeZones", out timeZones);
             if (timeZoneExist)
-                return timeZones;// return cashed values 
+                return timeZones; //return cached values 
 
             timeZones = new Dictionary<string, IList<string>>();
             foreach (var countryCode in _countryCodes)
@@ -208,7 +239,7 @@ namespace swaggertest.Controllers
             RequestAllCountriesHolidays(year);
             var timeZones = await RequestContryZonesAsync();
 
-            var holidayIntervals = HolidayIntervalsProcessor.CalculateHolidayIntervals(timeZones, _daysCountryCodesMap);
+            var holidayIntervals = HolidayIntervalsProcessor.CalculateHolidayIntervals(timeZones, _dayOfTheYearsMap);
             var mergedHolidayIntervals = HolidayIntervalsProcessor.MergeHolidayIntervals(holidayIntervals);
 
             var longestHolidaySequance = mergedHolidayIntervals[mergedHolidayIntervals.Count - 1].End - mergedHolidayIntervals[mergedHolidayIntervals.Count - 1].Start;
